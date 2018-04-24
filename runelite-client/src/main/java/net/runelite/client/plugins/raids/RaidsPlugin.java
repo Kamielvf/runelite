@@ -107,7 +107,7 @@ public class RaidsPlugin extends Plugin
 	private RaidsConfig config;
 
 	@Inject
-	private RaidsOverlay overlay;
+	private RaidsScoutOverlay overlay;
 
 	@Inject
 	private RaidsPointsOverlay pointsOverlay;
@@ -139,7 +139,7 @@ public class RaidsPlugin extends Plugin
 	@Override
 	public void configure(Binder binder)
 	{
-		binder.bind(RaidsOverlay.class);
+		binder.bind(RaidsScoutOverlay.class);
 	}
 
 	@Override

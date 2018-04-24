@@ -35,7 +35,7 @@ import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.OverlayPriority;
 import net.runelite.client.ui.overlay.components.PanelComponent;
 
-public class RaidsOverlay extends Overlay
+public class RaidsScoutOverlay extends Overlay
 {
 	private RaidsPlugin plugin;
 	private RaidsConfig config;
@@ -45,10 +45,10 @@ public class RaidsOverlay extends Overlay
 	private boolean scoutOverlayShown = false;
 
 	@Inject
-	public RaidsOverlay(RaidsPlugin plugin, RaidsConfig config)
+	public RaidsScoutOverlay(RaidsPlugin plugin, RaidsConfig config)
 	{
 		setPosition(OverlayPosition.TOP_LEFT);
-		setPriority(OverlayPriority.LOW);
+		setPriority(OverlayPriority.MED);
 		this.plugin = plugin;
 		this.config = config;
 	}
