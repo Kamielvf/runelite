@@ -58,10 +58,10 @@ public class Raid
 
 			RaidRoom room = rooms[i];
 
-			if (room == null)
+			if (room.getType() == RaidRoom.Type.UNKNOWN)
 			{
 				RaidRoom.Type type = RaidRoom.Type.fromCode(layout.getRoomAt(i).getSymbol());
-				room = new RaidRoom(null, type);
+				room.setType(type);
 
 				if (type == RaidRoom.Type.COMBAT)
 				{
@@ -72,8 +72,6 @@ public class Raid
 				{
 					room.setPuzzle(RaidRoom.Puzzle.UNKNOWN);
 				}
-
-				setRoom(room, i);
 			}
 		}
 	}

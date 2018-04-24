@@ -51,6 +51,7 @@ import net.runelite.api.VarPlayer;
 import net.runelite.api.Tile;
 import net.runelite.api.Varbits;
 import static net.runelite.api.Perspective.SCENE_SIZE;
+import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.ConfigChanged;
 import net.runelite.api.events.VarbitChanged;
@@ -425,98 +426,127 @@ public class RaidsPlugin extends Plugin
 		return 0;
 	}
 
-	private Point findLobbyBase()
+	/**
+	 * Determines the bottom left-most point of the raid
+	 *
+	 * @return the left-most corner of the raid in region coords
+	 */
+	private Point findRaidBase()
 	{
 		Tile[][] tiles = client.getRegion().getTiles()[LOBBY_PLANE];
+		Point lobbyBase = null;
+		Point firstNonNull = null;
 
 		for (int x = 0; x < SCENE_SIZE; x++)
 		{
 			for (int y = 0; y < SCENE_SIZE; y++)
 			{
-				if (tiles[x][y] == null || tiles[x][y].getWallObject() == null)
+				if (tiles[x][y] == null)
+				{
+					continue;
+				}
+				else if (firstNonNull == null)
+				{
+					firstNonNull = tiles[x][y].getRegionLocation();
+				}
+
+				if (tiles[x][y].getWallObject() == null)
 				{
 					continue;
 				}
 
 				if (tiles[x][y].getWallObject().getId() == ObjectID.NULL_12231)
 				{
-					return tiles[x][y].getRegionLocation();
+					lobbyBase = tiles[x][y].getRegionLocation();
+					break;
 				}
+			}
+
+			if (lobbyBase != null)
+			{
+				break;
 			}
 		}
 
-		return null;
+		if (lobbyBase == null || firstNonNull == null)
+		{
+			return null;
+		}
+
+
+		//if the remainder of this is 0, it means our first non-null tile is a valid point on the grid and we don't need to look further
+		if ((lobbyBase.getX() - firstNonNull.getX()) % RaidRoom.ROOM_MAX_SIZE == 0)
+		{
+			return firstNonNull;
+		}
+
+		int baseX = lobbyBase.getX();
+		int baseY = firstNonNull.getY(); //we always want the bottom row, so the first non-null tile's Y coord is always correct
+
+		//based on checking if there is another room east of the lobby, we can determine the west-most room of the raid
+		if (tiles[baseX + RaidRoom.ROOM_MAX_SIZE][baseY] == null)
+		{
+			baseX -= RaidRoom.ROOM_MAX_SIZE * 3;
+		}
+		else
+		{
+			baseX -= RaidRoom.ROOM_MAX_SIZE * 2;
+		}
+
+		return new Point(baseX, baseY);
 	}
 
 	private Raid buildRaid()
 	{
-		Point gridBase = findLobbyBase();
+		//find the raid base region coords as starting point for the grid
+		Point raidBase = findRaidBase();
 
-		if (gridBase == null)
+		if (raidBase == null)
 		{
 			return null;
 		}
 
 		Raid raid = new Raid();
 		Tile[][] tiles;
-		int position, x, y, offsetX;
-		int startX = -2;
+		int roomBaseX, roomBaseY, roomTileOffsetX;
+		int position = 0;
 
 		for (int plane = 3; plane > 1; plane--)
 		{
 			tiles = client.getRegion().getTiles()[plane];
 
-			if (tiles[gridBase.getX() + RaidRoom.ROOM_MAX_SIZE][gridBase.getY()] == null)
+			for (int i = 1; i > -1; i--)
 			{
-				position = 1;
-			}
-			else
-			{
-				position = 0;
-			}
+				roomBaseY = raidBase.getY() + (i * RaidRoom.ROOM_MAX_SIZE);
 
-			for (int i = 1; i > -2; i--)
-			{
-				y = gridBase.getY() + (i * RaidRoom.ROOM_MAX_SIZE);
-
-				for (int j = startX; j < 4; j++)
+				for (int j = 0; j < 4; j++)
 				{
-					x = gridBase.getX() + (j * RaidRoom.ROOM_MAX_SIZE);
-					offsetX = 0;
+					RaidRoom room;
+					roomBaseX = raidBase.getX() + (j * RaidRoom.ROOM_MAX_SIZE);
 
-					if (x > SCENE_SIZE && position > 1 && position < 4)
+					if (roomBaseX < 0)
 					{
-						position++;
+						roomTileOffsetX = Math.abs(roomBaseX) + 1; //add 1 because the tile at x=0 will always be null
+					}
+					else
+					{
+						roomTileOffsetX = 0;
 					}
 
-					if (x < 0)
+					if (roomBaseX >= SCENE_SIZE || roomTileOffsetX >= RaidRoom.ROOM_MAX_SIZE)
 					{
-						offsetX = Math.abs(x) + 1; //add 1 because the tile at x=0 will always be null
+						//in this case the room is so far that it is not visible in any way on the map
+						WorldPoint base = WorldPoint.fromRegion(client, roomBaseX, roomBaseY, plane);
+						room = new RaidRoom(base, RaidRoom.Type.UNKNOWN);
+					}
+					else
+					{
+						Tile base = tiles[roomBaseX + roomTileOffsetX][roomBaseY];
+						room = determineRoom(base, roomTileOffsetX);
 					}
 
-					if (x < SCENE_SIZE && y >= 0 && y < SCENE_SIZE)
-					{
-						if (tiles[x + offsetX][y] == null)
-						{
-							if (position == 4)
-							{
-								position++;
-								break;
-							}
-
-							continue;
-						}
-
-						if (position == 0 && startX != j)
-						{
-							startX = j;
-						}
-
-						Tile base = tiles[offsetX > 0 ? 1 : x][y];
-						RaidRoom room = determineRoom(base);
-						raid.setRoom(room, position + Math.abs((plane - 3) * 8));
-						position++;
-					}
+					raid.setRoom(room, position);
+					position++;
 				}
 			}
 		}
@@ -524,9 +554,9 @@ public class RaidsPlugin extends Plugin
 		return raid;
 	}
 
-	private RaidRoom determineRoom(Tile base)
+	private RaidRoom determineRoom(Tile base, int tileOffset)
 	{
-		RaidRoom room = new RaidRoom(base, RaidRoom.Type.EMPTY);
+		RaidRoom room = new RaidRoom(base.getWorldLocation().dx(-tileOffset), RaidRoom.Type.EMPTY);
 		int chunkData = client.getInstanceTemplateChunks()[base.getPlane()][(base.getRegionLocation().getX()) / 8][base.getRegionLocation().getY() / 8];
 		InstanceTemplates template = InstanceTemplates.findMatch(chunkData);
 
