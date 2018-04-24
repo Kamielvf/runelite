@@ -137,12 +137,6 @@ public class RaidsPlugin extends Plugin
 	}
 
 	@Override
-	public void configure(Binder binder)
-	{
-		binder.bind(RaidsScoutOverlay.class);
-	}
-
-	@Override
 	public List<Overlay> getOverlays()
 	{
 		return Arrays.asList(overlay, pointsOverlay);
