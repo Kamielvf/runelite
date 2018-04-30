@@ -262,8 +262,11 @@ public class RaidsPlugin extends Plugin
 
 		if (client.getVar(VarPlayer.IN_RAID_PARTY) == -1)
 		{
-			overlay.setScoutOverlayShown(false);
-			raid = null;
+			if (!inRaidChambers || !config.scoutOverlayDuringRaid())
+			{
+				overlay.setScoutOverlayShown(false);
+				raid = null;
+			}
 		}
 	}
 
