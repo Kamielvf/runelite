@@ -144,10 +144,20 @@ public class RaidRoom
 	@Setter
 	private RaidRoom nextRoom;
 
+	@Getter
+	@Setter
+	private boolean completed = false;
+
 	public RaidRoom(WorldPoint base, Type type)
 	{
 		this.base = base;
 		this.type = type;
+	}
+
+	public boolean contains(WorldPoint point)
+	{
+		return point.getX() >= base.getX() && point.getX() < base.getX() + ROOM_MAX_SIZE &&
+			point.getY() >= base.getY() && point.getY() < base.getY() + ROOM_MAX_SIZE;
 	}
 
 	@Override

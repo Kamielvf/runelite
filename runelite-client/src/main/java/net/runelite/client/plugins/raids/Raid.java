@@ -34,8 +34,10 @@ import net.runelite.client.plugins.raids.solver.Room;
 
 public class Raid
 {
+	private static final int TOTAL_RAID_ROOMS = 16;
+
 	@Getter
-	private final RaidRoom[] rooms = new RaidRoom[16];
+	private final RaidRoom[] rooms = new RaidRoom[TOTAL_RAID_ROOMS];
 
 	@Getter
 	private Layout layout;
@@ -51,16 +53,29 @@ public class Raid
 
 		for (int i = 0; i < rooms.length; i++)
 		{
-			if (layout.getRoomAt(i) == null)
+			Room currentRoom = layout.getRoomAt(i);
+			if (currentRoom == null)
 			{
 				continue;
 			}
 
 			RaidRoom room = rooms[i];
+			Room next = currentRoom.getNext();
+
+			if (next != null)
+			{
+				RaidRoom nextRoom = rooms[next.getPosition()];
+
+				if (nextRoom != null)
+				{
+					room.setNextRoom(nextRoom);
+					nextRoom.setPreviousRoom(room);
+				}
+			}
 
 			if (room.getType() == RaidRoom.Type.UNKNOWN)
 			{
-				RaidRoom.Type type = RaidRoom.Type.fromCode(layout.getRoomAt(i).getSymbol());
+				RaidRoom.Type type = RaidRoom.Type.fromCode(currentRoom.getSymbol());
 				room.setType(type);
 
 				if (type == RaidRoom.Type.COMBAT)
@@ -74,6 +89,11 @@ public class Raid
 				}
 			}
 		}
+	}
+
+	public RaidRoom getStartingRoom()
+	{
+		return rooms[layout.getRooms().get(0).getPosition()];
 	}
 
 	public RaidRoom getRoom(int position)

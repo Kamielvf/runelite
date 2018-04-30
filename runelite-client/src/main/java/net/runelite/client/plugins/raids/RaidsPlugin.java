@@ -122,6 +122,9 @@ public class RaidsPlugin extends Plugin
 	private Raid raid;
 
 	@Getter
+	private RaidRoom currentRoom;
+
+	@Getter
 	private ArrayList<String> roomWhitelist = new ArrayList<>();
 
 	@Getter
@@ -255,8 +258,7 @@ public class RaidsPlugin extends Plugin
 			}
 			else if (!config.scoutOverlayAtBank())
 			{
-				overlay.setScoutOverlayShown(false);
-				raid = null;
+				resetRaid();
 			}
 		}
 
@@ -264,8 +266,7 @@ public class RaidsPlugin extends Plugin
 		{
 			if (!inRaidChambers || !config.scoutOverlayDuringRaid())
 			{
-				overlay.setScoutOverlayShown(false);
-				raid = null;
+				resetRaid();
 			}
 		}
 	}
@@ -282,6 +283,7 @@ public class RaidsPlugin extends Plugin
 				raidOngoing = true;
 				timer = new RaidsTimer(getRaidsIcon(), this, Instant.now());
 				infoBoxManager.addInfoBox(timer);
+				currentRoom = raid.getStartingRoom();
 			}
 
 			if (timer != null && message.contains(LEVEL_COMPLETE_MESSAGE))
@@ -339,6 +341,41 @@ public class RaidsPlugin extends Plugin
 		}
 
 		checkUnknownRooms();
+	}
+
+	@Subscribe
+	public void onTick(GameTick event)
+	{
+		if (!inRaidChambers || !raidOngoing)
+		{
+			return;
+		}
+
+		WorldPoint playerPos = client.getLocalPlayer().getWorldLocation();
+
+		if (currentRoom.contains(playerPos))
+		{
+			return;
+		}
+
+		RaidRoom nextRoom = currentRoom.getNextRoom();
+		if (nextRoom != null && nextRoom.contains(playerPos))
+		{
+			currentRoom.setCompleted(true);
+			currentRoom = nextRoom;
+		}
+		else
+		{
+			//it is safe to assume this is never null, and this part will never be reached when in the first room of the raid
+			currentRoom = currentRoom.getPreviousRoom();
+		}
+	}
+
+	public void resetRaid()
+	{
+		overlay.setScoutOverlayShown(false);
+		currentRoom = null;
+		raid = null;
 	}
 
 	private void checkUnknownRooms()
