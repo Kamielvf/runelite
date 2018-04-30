@@ -25,7 +25,6 @@
 package net.runelite.client.plugins.raids;
 
 import com.google.common.eventbus.Subscribe;
-import com.google.inject.Binder;
 import com.google.inject.Provides;
 import java.awt.Color;
 import java.awt.image.BufferedImage;
@@ -54,6 +53,9 @@ import static net.runelite.api.Perspective.SCENE_SIZE;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.ConfigChanged;
+import net.runelite.api.events.GameStateChanged;
+import net.runelite.api.events.GameTick;
+import net.runelite.api.events.MapRegionChanged;
 import net.runelite.api.events.VarbitChanged;
 import net.runelite.api.events.WidgetHiddenChanged;
 import net.runelite.api.widgets.Widget;
@@ -90,6 +92,7 @@ public class RaidsPlugin extends Plugin
 
 	private BufferedImage raidsIcon;
 	private RaidsTimer timer;
+	private boolean raidOngoing = false;
 
 	@Getter
 	private boolean inRaidChambers;
@@ -273,6 +276,7 @@ public class RaidsPlugin extends Plugin
 
 			if (config.raidsTimer() && message.startsWith(RAID_START_MESSAGE))
 			{
+				raidOngoing = true;
 				timer = new RaidsTimer(getRaidsIcon(), this, Instant.now());
 				infoBoxManager.addInfoBox(timer);
 			}
@@ -321,6 +325,47 @@ public class RaidsPlugin extends Plugin
 				}
 			}
 		}
+	}
+
+	@Subscribe
+	public void onGameStateChanged(GameStateChanged event)
+	{
+		if (!inRaidChambers || !raidOngoing || event.getGameState() != GameState.LOGGED_IN)
+		{
+			return;
+		}
+
+		checkUnknownRooms();
+	}
+
+	private void checkUnknownRooms()
+	{
+		Arrays.stream(raid.getRooms()).filter(x -> x.getType() == RaidRoom.Type.UNKNOWN ||
+			(x.getType() == RaidRoom.Type.COMBAT && x.getBoss() == RaidRoom.Boss.UNKNOWN) ||
+			(x.getType() == RaidRoom.Type.PUZZLE && x.getPuzzle() == RaidRoom.Puzzle.UNKNOWN)).forEach(x ->
+		{
+			WorldPoint worldPoint = x.getBase();
+			int xCoord = worldPoint.getX() - client.getBaseX();
+
+			//in case the room is out of scene it is skipped
+			if (xCoord >= SCENE_SIZE || xCoord <= -RaidRoom.ROOM_MAX_SIZE)
+			{
+				return;
+			}
+			else if (xCoord <= 0)
+			{
+				//this would mean the room is partially visible, so we check the first tile of the scene
+				xCoord = 1;
+			}
+
+			Tile tile = client.getRegion().getTiles()[worldPoint.getPlane()][xCoord][worldPoint.getY() - client.getBaseY()];
+			RaidRoom room = determineRoom(tile, 0);
+			x.setType(room.getType());
+			x.setBoss(room.getBoss());
+			x.setPuzzle(room.getPuzzle());
+		});
+
+		RotationSolver.solve(raid.getCombatRooms());
 	}
 
 	private void updateInfoBoxState()
@@ -423,7 +468,7 @@ public class RaidsPlugin extends Plugin
 	/**
 	 * Determines the bottom left-most point of the raid
 	 *
-	 * @return the left-most corner of the raid in region coords
+	 * @return the bottom left-most corner of the raid in region coords
 	 */
 	private Point findRaidBase()
 	{
