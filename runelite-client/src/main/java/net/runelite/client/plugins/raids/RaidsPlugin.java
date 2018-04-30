@@ -118,6 +118,9 @@ public class RaidsPlugin extends Plugin
 	private RaidsPointsOverlay pointsOverlay;
 
 	@Inject
+	private RaidsVanguardsOverlay vanguardsOverlay;
+
+	@Inject
 	private LayoutSolver layoutSolver;
 
 	@Getter
@@ -147,7 +150,7 @@ public class RaidsPlugin extends Plugin
 	@Override
 	public List<Overlay> getOverlays()
 	{
-		return Arrays.asList(overlay, pointsOverlay);
+		return Arrays.asList(overlay, pointsOverlay, vanguardsOverlay);
 	}
 
 	@Override
@@ -353,6 +356,11 @@ public class RaidsPlugin extends Plugin
 			return;
 		}
 
+		if (config.vanguardsOverlay() && currentRoom.getBoss() == RaidRoom.Boss.VANGUARDS)
+		{
+			vanguardsOverlay.updateVanguardsHealth();
+		}
+
 		WorldPoint playerPos = client.getLocalPlayer().getWorldLocation();
 
 		if (currentRoom.contains(playerPos))
@@ -378,6 +386,7 @@ public class RaidsPlugin extends Plugin
 		overlay.setScoutOverlayShown(false);
 		currentRoom = null;
 		raid = null;
+		vanguardsOverlay.reset();
 	}
 
 	private void checkUnknownRooms()
