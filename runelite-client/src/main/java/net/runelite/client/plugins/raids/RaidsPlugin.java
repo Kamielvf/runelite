@@ -92,6 +92,8 @@ public class RaidsPlugin extends Plugin
 
 	private BufferedImage raidsIcon;
 	private RaidsTimer timer;
+
+	@Getter
 	private boolean raidOngoing = false;
 
 	@Getter

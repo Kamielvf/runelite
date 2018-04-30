@@ -73,8 +73,21 @@ public class RaidsScoutOverlay extends Overlay
 		panelComponent.setTitleColor(Color.WHITE);
 		panelComponent.setTitle("Raid scouter");
 
+		boolean raidOngoing = plugin.isRaidOngoing();
 		Color color = Color.WHITE;
-		String layout = plugin.getRaid().getLayout().toCode().replaceAll("#", "").replaceAll("¤", "");
+
+		String layout = plugin.getRaid().getLayout().toCode();
+
+		if (raidOngoing)
+		{
+			int progress = plugin.getRaid().getProgress();
+
+			layout = "<col=" + Integer.toHexString(Color.GREEN.getRGB() & 0xFFFFFF) + ">" +
+				layout.substring(0, progress) + "<col=" + Integer.toHexString(color.getRGB() & 0xFFFFFF) + ">" +
+				layout.substring(progress, layout.length());
+		}
+
+		layout = layout.replaceAll("#", "").replaceAll("¤", "");
 
 		if (config.enableLayoutWhitelist() && !plugin.getLayoutWhitelist().contains(layout.toLowerCase()))
 		{
@@ -103,20 +116,23 @@ public class RaidsScoutOverlay extends Overlay
 				continue;
 			}
 
-			color = Color.WHITE;
+			color = raidOngoing ? (room.isCompleted() ? Color.GREEN : Color.WHITE) : Color.WHITE;
 
 			switch (room.getType())
 			{
 				case COMBAT:
 					bossCount++;
-					if (plugin.getRoomWhitelist().contains(room.getBoss().getName().toLowerCase()))
+					if (!raidOngoing)
 					{
-						color = Color.GREEN;
-					}
-					else if (plugin.getRoomBlacklist().contains(room.getBoss().getName().toLowerCase())
+						if (plugin.getRoomWhitelist().contains(room.getBoss().getName().toLowerCase()))
+						{
+							color = Color.GREEN;
+						}
+						else if (plugin.getRoomBlacklist().contains(room.getBoss().getName().toLowerCase())
 							|| config.enableRotationWhitelist() && bossCount > bossMatches)
-					{
-						color = Color.RED;
+						{
+							color = Color.RED;
+						}
 					}
 
 					panelComponent.getLines().add(new PanelComponent.Line(
@@ -125,13 +141,16 @@ public class RaidsScoutOverlay extends Overlay
 					break;
 
 				case PUZZLE:
-					if (plugin.getRoomWhitelist().contains(room.getPuzzle().getName().toLowerCase()))
+					if (!raidOngoing)
 					{
-						color = Color.GREEN;
-					}
-					else if (plugin.getRoomBlacklist().contains(room.getPuzzle().getName().toLowerCase()))
-					{
-						color = Color.RED;
+						if (plugin.getRoomWhitelist().contains(room.getPuzzle().getName().toLowerCase()))
+						{
+							color = Color.GREEN;
+						}
+						else if (plugin.getRoomBlacklist().contains(room.getPuzzle().getName().toLowerCase()))
+						{
+							color = Color.RED;
+						}
 					}
 
 					panelComponent.getLines().add(new PanelComponent.Line(

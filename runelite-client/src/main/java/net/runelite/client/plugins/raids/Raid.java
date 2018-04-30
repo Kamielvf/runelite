@@ -91,6 +91,21 @@ public class Raid
 		}
 	}
 
+	public int getProgress()
+	{
+		int progress = 0;
+
+		for (RaidRoom room : rooms)
+		{
+			if (room.isCompleted())
+			{
+				progress++;
+			}
+		}
+
+		return progress;
+	}
+
 	public RaidRoom getStartingRoom()
 	{
 		return rooms[layout.getRooms().get(0).getPosition()];
