@@ -75,7 +75,6 @@ public class RaidsScoutOverlay extends Overlay
 
 		boolean raidOngoing = plugin.isRaidOngoing();
 		Color color = Color.WHITE;
-
 		String layout = plugin.getRaid().getLayout().toCode();
 
 		if (raidOngoing)
@@ -89,22 +88,23 @@ public class RaidsScoutOverlay extends Overlay
 
 		layout = layout.replaceAll("#", "").replaceAll("¤", "");
 
-		if (config.enableLayoutWhitelist() && !plugin.getLayoutWhitelist().contains(layout.toLowerCase()))
+		if (config.enableLayoutWhitelist())
 		{
-			color = Color.RED;
+			if (plugin.getLayoutWhitelist().contains(layout.toLowerCase()))
+			{
+				color = Color.GREEN;
+			}
+			else
+			{
+				color = Color.RED;
+			}
 		}
 
 		panelComponent.getLines().add(new PanelComponent.Line(
 				"Layout", Color.WHITE, layout, color
 		));
 
-		int bossMatches = 0;
-		int bossCount = 0;
-
-		if (config.enableRotationWhitelist())
-		{
-			bossMatches = plugin.getRotationMatches();
-		}
+		boolean isWhitelistedRotation = config.enableRotationWhitelist() && plugin.isRotationWhitelisted();
 
 		for (Room layoutRoom : plugin.getRaid().getLayout().getRooms())
 		{
@@ -121,15 +121,14 @@ public class RaidsScoutOverlay extends Overlay
 			switch (room.getType())
 			{
 				case COMBAT:
-					bossCount++;
 					if (!raidOngoing)
 					{
-						if (plugin.getRoomWhitelist().contains(room.getBoss().getName().toLowerCase()))
+						if (plugin.getRoomWhitelist().contains(room.getBoss().getName().toLowerCase())
+							|| config.enableRotationWhitelist() && isWhitelistedRotation)
 						{
 							color = Color.GREEN;
 						}
-						else if (plugin.getRoomBlacklist().contains(room.getBoss().getName().toLowerCase())
-							|| config.enableRotationWhitelist() && bossCount > bossMatches)
+						else if (plugin.getRoomBlacklist().contains(room.getBoss().getName().toLowerCase()) || config.enableRotationWhitelist())
 						{
 							color = Color.RED;
 						}
